@@ -1,5 +1,6 @@
 import curses
 import os
+import threading
 
 
 class Screen():
@@ -23,6 +24,9 @@ class Screen():
         curses.echo()
         curses.endwin()
         curses.curs_set(1)
+        if args[0] == KeyboardInterrupt:
+            print("exit by user.")
+            return True
         return False
 
     def get_matrix(self):
@@ -37,3 +41,21 @@ class Screen():
 
     def __getattr__(self, item):
         return self.__screen.__getattribute__(item)
+
+    def add_keyboard_listener(self, callback, *args, **kwargs):
+        if not callable(callback):
+            raise TypeError("callback must be callable.")
+
+        class Listener(threading.Thread):
+            def __init__(self, callback, *args, **kwargs):
+                threading.Thread.__init__(self)
+                self.callback = callback
+                self.args = args
+                self.kwargs = kwargs
+
+            def run(self):
+                self.callback(*self.args, **self.kwargs)
+
+        listener = Listener(callback, *args, **kwargs)
+        listener.daemon = True
+        listener.start()
