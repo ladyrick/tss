@@ -29,13 +29,14 @@ class Screen():
             return True
         return False
 
+    def pause(self):
+        self.__screen.getch()
+
     def get_matrix(self):
         return ["#" * self.cols] * self.rows
 
     def update(self, matrix):
-        assert len(matrix) == self.rows
         for i, line in enumerate(matrix):
-            assert len(line) == self.cols
             self.insstr(i, 0, line)
         self.refresh()
 
