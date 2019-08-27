@@ -1,10 +1,7 @@
-import curses
-import time
-
 from screen import Screen
+from tss import TSS
 
 with Screen() as screen:
-    from tss import TSS
     tss = TSS(screen)
     tss.init()
-    screen.pause()
+    tss.play()

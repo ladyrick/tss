@@ -1,11 +1,11 @@
 import curses
 import os
 import threading
+import tss
 
 
 class Screen():
-    def __init__(self, w_char=False):
-        self.w_char = w_char
+    def __init__(self):
         cols, rows = os.get_terminal_size()
         self.rows = rows
         self.cols = cols
@@ -14,7 +14,7 @@ class Screen():
         self.__screen = curses.initscr()
         curses.noecho()
         curses.cbreak()
-        curses.curs_set(0)
+        curses.curs_set(False)
         self.__screen.keypad(True)
         return self
 
@@ -23,9 +23,12 @@ class Screen():
         self.__screen.keypad(False)
         curses.echo()
         curses.endwin()
-        curses.curs_set(1)
+        curses.curs_set(True)
         if args[0] == KeyboardInterrupt:
             print("exit by user.")
+            return True
+        elif args[0] == tss.TSS.GameOver:
+            print("Game over. Your score is %s." % args[1])
             return True
         return False
 
@@ -36,7 +39,9 @@ class Screen():
         return ["#" * self.cols] * self.rows
 
     def update(self, matrix):
+        assert len(matrix) <= self.rows
         for i, line in enumerate(matrix):
+            assert len(line) <= self.cols
             self.insstr(i, 0, line)
         self.refresh()
 
