@@ -1,6 +1,5 @@
 import curses
 import os
-import threading
 import tss
 
 
@@ -39,6 +38,7 @@ class Screen():
         return ["#" * self.cols] * self.rows
 
     def update(self, matrix):
+        self.__screen.clear()
         assert len(matrix) <= self.rows
         for i, line in enumerate(matrix):
             assert len(line) <= self.cols
@@ -47,21 +47,3 @@ class Screen():
 
     def __getattr__(self, item):
         return self.__screen.__getattribute__(item)
-
-    def add_keyboard_listener(self, callback, *args, **kwargs):
-        if not callable(callback):
-            raise TypeError("callback must be callable.")
-
-        class Listener(threading.Thread):
-            def __init__(self, callback, *args, **kwargs):
-                threading.Thread.__init__(self)
-                self.callback = callback
-                self.args = args
-                self.kwargs = kwargs
-
-            def run(self):
-                self.callback(*self.args, **self.kwargs)
-
-        listener = Listener(callback, *args, **kwargs)
-        listener.daemon = True
-        listener.start()

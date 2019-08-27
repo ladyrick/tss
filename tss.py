@@ -1,18 +1,41 @@
 import random
 import time
 import collections
+import threading
+
 Candy = collections.namedtuple("Candy", "block score")
+
+
+def add_daemon(func, *args, **kwargs):
+    if not callable(func):
+        raise TypeError("func must be callable.")
+
+    class Daemon(threading.Thread):
+        def __init__(self, func, *args, **kwargs):
+            threading.Thread.__init__(self)
+            self.func = func
+            self.args = args
+            self.kwargs = kwargs
+            self.daemon = True
+
+        def run(self):
+            self.func(*self.args, **self.kwargs)
+
+    listener = Daemon(func, *args, **kwargs)
+    listener.start()
 
 
 class TSS():
     candies = [Candy("口", 1), Candy("回", 2), Candy("品", 3)]
     blocks = {
-        "q": "┏",  # left up
-        "z": "┗",  # left down
-        "p": "┓",  # right up
-        "m": "┛",  # right down
-        "h": "━━",  # horizontal
-        "v": "┃",  # vertical
+        "q": "┏━",  # left up
+        "z": "┗━",  # left down
+        "p": "┓ ",  # right up
+        "m": "┛ ",  # right down
+        "u": "━━",  # top border
+        "b": "━━",  # bottom border
+        "l": "┃ ",  # left border
+        "r": "┃ ",  # right border
         "t": "〇",  # tail
         "w": "〇",  # head face up
         "s": "〇",  # head face down
@@ -57,11 +80,11 @@ class TSS():
     def put_walls(self):
         rows = self.screen.rows
         cols = self.screen.cols
-        self.matrix = ["q" + "h" * (self.cols - 2) + "p"]
+        self.matrix = ["q" + "u" * (self.cols - 2) + "p"]
         for i in range(1, rows - 1):
-            row = "v" + "0" * (self.cols - 2) + "v"
+            row = "l" + "0" * (self.cols - 2) + "r"
             self.matrix.append(row)
-        self.matrix.append("z" + "h" * (self.cols - 2) + "m")
+        self.matrix.append("z" + "b" * (self.cols - 2) + "m")
 
     def put_snake(self):
         if not self.snake:
@@ -119,22 +142,37 @@ class TSS():
         while True:
             ch = self.screen.getch()
             keycodes = {
-                119: "w",  # w
-                97: "a",  # a
-                115: "s",  # s
-                100: "d",  # d
+                119: ("w", "ad"),  # w
+                97: ("a", "ws"),  # a
+                115: ("s", "ad"),  # s
+                100: ("d", "ws"),  # d
             }
             if ch in keycodes:
-                self.direction = keycodes[ch]
+                new_direction = keycodes[ch]
+                if self.direction in new_direction[1]:
+                    self.direction = new_direction[0]
+
+    def gameover_no_update(self):
+        r = self.screen.rows // 2
+        c = self.screen.cols // 2 - 9
+        self.screen.addstr(r - 2, c, "┏━━━━━━━━━━━━━━━━┓")
+        self.screen.addstr(r - 1, c, "┃                ┃")
+        self.screen.addstr(r + 0, c, "┃    GAME OVER   ┃")
+        self.screen.addstr(r + 1, c, "┃                ┃")
+        self.screen.addstr(r + 2, c, "┗━━━━━━━━━━━━━━━━┛")
+        self.screen.move(self.screen.rows - 1, 0)
+        self.screen.refresh()
 
     def play(self):
         self.put_snake()
         self.put_candy()
         self.update()
-        self.screen.add_keyboard_listener(self.turn_listener)
+        add_daemon(self.turn_listener)
         while True:
             time.sleep(0.1)
             if self.move():
                 self.update()
             else:
+                self.gameover_no_update()
+                time.sleep(0.5)
                 raise self.GameOver(self.score)
