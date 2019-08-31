@@ -36,6 +36,7 @@ class TSS():
         "b": "━━",  # bottom border
         "l": "┃ ",  # left border
         "r": "┃ ",  # right border
+        "o": "〇",  # body
         "t": "〇",  # tail
         "w": "〇",  # head face up
         "s": "〇",  # head face down
@@ -64,8 +65,6 @@ class TSS():
                 if c in self.blocks:
                     row += self.blocks[c]
                 elif c == "c":
-                    if not self.candy:
-                        self.candy = random.choice(self.candies)
                     row += self.candy.block
                 else:
                     row += "  "
@@ -73,18 +72,19 @@ class TSS():
         self.screen.update(matrix)
 
     def set_block(self, pos, block):
-        r = pos[0]
-        c = pos[1]
-        self.matrix[r] = self.matrix[r][:c] + block + self.matrix[r][c + 1:]
+        self.matrix[pos[0]][pos[1]] = block
 
     def put_walls(self):
-        rows = self.screen.rows
-        cols = self.screen.cols
-        self.matrix = ["q" + "u" * (self.cols - 2) + "p"]
-        for i in range(1, rows - 1):
-            row = "l" + "0" * (self.cols - 2) + "r"
-            self.matrix.append(row)
-        self.matrix.append("z" + "b" * (self.cols - 2) + "m")
+        self.matrix[0][0] = "q"
+        self.matrix[0][self.cols - 1] = "p"
+        self.matrix[self.rows - 1][0] = "z"
+        self.matrix[self.rows - 1][self.cols - 1] = "m"
+        for c in range(1, self.cols - 1):
+            self.matrix[0][c] = "u"
+            self.matrix[self.rows - 1][c] = "b"
+        for r in range(1, self.rows - 1):
+            self.matrix[r][0] = "l"
+            self.matrix[r][self.cols - 1] = "r"
 
     def put_snake(self):
         if not self.snake:
@@ -92,6 +92,7 @@ class TSS():
             c = (self.cols - 2) * random.randint(20, 80) // 100
             self.snake.append([r, c])
             self.direction = random.choice(["w", "a", "s", "d"])
+            self.matrix[r][c] = self.direction
 
     def put_candy(self):
         blanks = []
@@ -99,18 +100,22 @@ class TSS():
             for c in range(len(self.matrix[r])):
                 if self.matrix[r][c] == "0":
                     blanks.append((r, c))
-        self.set_block(random.choice(blanks), "c")
+        self.candy_pos = random.choice(blanks)
+        self.candy = random.choice(self.candies)
+        self.set_block(self.candy_pos, "c")
 
-    def init(self, wall=True):
-        self.matrix = [""]
+    def reset(self):
+        self.matrix = []
+        for i in range(self.rows):
+            self.matrix.append(["0"] * self.cols)
         self.snake = []
+        self.start_length = 3
         self.direction = None
         self.candy = None
+        self.candy_pos = None
         self.score = 0
-        self.put_walls()
-        self.update()
 
-    def move(self):
+    def move(self, direction):
         if not self.snake:
             return True
         tail = None
@@ -120,22 +125,26 @@ class TSS():
             "s": [1, 0],
             "a": [0, -1],
             "d": [0, 1],
-        }[self.direction]
+        }[direction]
         head[0] += delta[0]
         head[1] += delta[1]
         if head[0] < 0 or head[0] >= self.rows or head[1] < 0 or head[1] >= self.cols or \
                 self.matrix[head[0]][head[1]] not in "0c":
             return False
-        if self.matrix[head[0]][head[1]] == "c":
-            self.score += self.candy.score
-            self.candy = None
-            self.put_candy()
-        elif len(self.snake) >= 3:
+        candy_eaten = self.matrix[head[0]][head[1]] == "c"
+        if candy_eaten and len(self.snake) < self.start_length:
+            self.start_length += 1
+        if not candy_eaten and len(self.snake) >= self.start_length:
             tail = self.snake.pop()
-        self.set_block(head, self.direction)
-        self.set_block(self.snake[0], "t")
-        tail and self.set_block(tail, "0")
+        self.set_block(head, direction)
+        self.set_block(self.snake[0], "t" if len(self.snake) == 1 else "o")
+        if tail:
+            self.set_block(tail, "0")
+            self.set_block(self.snake[-1], "t")
         self.snake.insert(0, head)
+        if candy_eaten:
+            self.score += self.candy.score
+            self.put_candy()
         return True
 
     def turn_listener(self):
@@ -163,14 +172,25 @@ class TSS():
         self.screen.move(self.screen.rows - 1, 0)
         self.screen.refresh()
 
-    def play(self):
+    def play(self, AI=None):
+        self.reset()
+        self.put_walls()
         self.put_snake()
         self.put_candy()
         self.update()
-        add_daemon(self.turn_listener)
+        if not AI:
+            add_daemon(self.turn_listener)
         while True:
-            time.sleep(0.1)
-            if self.move():
+            if AI:
+                try:
+                    self.direction = AI(self.matrix, self.snake, self.candy_pos)
+                except:
+                    time.sleep(3600)
+                    break
+                time.sleep(0.05)
+            else:
+                time.sleep(0.2)
+            if self.move(self.direction):
                 self.update()
             else:
                 self.gameover_no_update()

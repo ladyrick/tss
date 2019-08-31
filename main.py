@@ -1,7 +1,7 @@
 from screen import Screen
 from tss import TSS
+from ai import AI
 
 with Screen() as screen:
     tss = TSS(screen)
-    tss.init()
-    tss.play()
+    tss.play(AI=AI)
