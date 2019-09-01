@@ -4,4 +4,4 @@ from ai import AI
 
 with Screen() as screen:
     tss = TSS(screen)
-    tss.play(AI=AI)
+    tss.play(AI=AI())

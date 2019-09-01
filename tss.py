@@ -37,11 +37,11 @@ class TSS():
         "l": "┃ ",  # left border
         "r": "┃ ",  # right border
         "o": "〇",  # body
-        "t": "〇",  # tail
-        "w": "〇",  # head face up
-        "s": "〇",  # head face down
-        "a": "〇",  # head face left
-        "d": "〇",  # head face right
+        "t": "尾",  # tail
+        "w": "头",  # head face up
+        "s": "头",  # head face down
+        "a": "头",  # head face left
+        "d": "头",  # head face right
         # "c" for candy.
         # "0" for blank.
     }
@@ -88,11 +88,20 @@ class TSS():
 
     def put_snake(self):
         if not self.snake:
-            r = (self.rows - 2) * random.randint(20, 80) // 100
-            c = (self.cols - 2) * random.randint(20, 80) // 100
-            self.snake.append([r, c])
+            r = (self.rows - 2) * random.randint(20, 80) // 100 + 1
+            c = (self.cols - 2) * random.randint(20, 80) // 100 + 1
+            tail = (r, c)
             self.direction = random.choice(["w", "a", "s", "d"])
-            self.matrix[r][c] = self.direction
+            delta = {
+                "w": [-1, 0],
+                "s": [1, 0],
+                "a": [0, -1],
+                "d": [0, 1],
+            }[self.direction]
+            head = (r + delta[0], c + delta[1])
+            self.snake = [head, tail]
+            self.matrix[head[0]][head[1]] = self.direction
+            self.matrix[tail[0]][tail[1]] = "t"
 
     def put_candy(self):
         blanks = []
@@ -108,8 +117,7 @@ class TSS():
         self.matrix = []
         for i in range(self.rows):
             self.matrix.append(["0"] * self.cols)
-        self.snake = []
-        self.start_length = 3
+        self.snake = None
         self.direction = None
         self.candy = None
         self.candy_pos = None
@@ -119,27 +127,24 @@ class TSS():
         if not self.snake:
             return True
         tail = None
-        head = self.snake[0][:]
+        head = self.snake[0]
         delta = {
             "w": [-1, 0],
             "s": [1, 0],
             "a": [0, -1],
             "d": [0, 1],
         }[direction]
-        head[0] += delta[0]
-        head[1] += delta[1]
+        head = (head[0] + delta[0], head[1] + delta[1])
+        candy_eaten = self.matrix[head[0]][head[1]] == "c"
+        if not candy_eaten:
+            tail = self.snake.pop()
+            self.set_block(tail, "0")
         if head[0] < 0 or head[0] >= self.rows or head[1] < 0 or head[1] >= self.cols or \
                 self.matrix[head[0]][head[1]] not in "0c":
             return False
-        candy_eaten = self.matrix[head[0]][head[1]] == "c"
-        if candy_eaten and len(self.snake) < self.start_length:
-            self.start_length += 1
-        if not candy_eaten and len(self.snake) >= self.start_length:
-            tail = self.snake.pop()
         self.set_block(head, direction)
-        self.set_block(self.snake[0], "t" if len(self.snake) == 1 else "o")
+        self.set_block(self.snake[0], "o")
         if tail:
-            self.set_block(tail, "0")
             self.set_block(self.snake[-1], "t")
         self.snake.insert(0, head)
         if candy_eaten:

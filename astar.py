@@ -14,7 +14,7 @@ class Node():
         return self.H < node.H
 
 
-def AStar(map, start, end, walls='#'):
+def AStar(map, start, end, walls="#"):
     assert map[start[0]][start[1]] not in walls
     assert map[end[0]][end[1]] not in walls
 
@@ -79,7 +79,7 @@ def generate(row, col):
 
 def printmap(map):
     for row in map:
-        print(''.join(row))
+        print("".join(row))
 
 
 if __name__ == "__main__":
@@ -92,7 +92,7 @@ if __name__ == "__main__":
     path, observed = AStar(map, start, end)
     print(path, observed)
     for pos in observed:
-        map[pos[0]][pos[1]] = 'O'
+        map[pos[0]][pos[1]] = "O"
     for pos in path[1:-1]:
-        map[pos[0]][pos[1]] = '@'
+        map[pos[0]][pos[1]] = "@"
     printmap(map)
